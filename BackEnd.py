@@ -78,6 +78,11 @@ async def create_item(user: UserCreate, db: Session = Depends(get_db)):
         db.add(user_instance)
         db.commit()
         return {**user.model_dump(), "uid": user_instance.uid}
+    
+@app.get("/users/{uid}", response_model=UserCreate)
+async def get_user(uid: int, db:Session = Depends(get_db)):
+    data_ur = db.query(Users).filter(Users.uid == uid).first()
+    return data_ur
 
 @app.on_event("startup")
 async def startup():
