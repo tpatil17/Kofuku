@@ -1,13 +1,15 @@
 
 
 
+
 from fastapi import FastAPI, Depends
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from pydantic import BaseModel
 import requests
-
+import random
+from math import radians, sin, cos, sqrt, atan2
 
 # Database
 DATABASE_URL = "sqlite:///./data.db"
@@ -40,6 +42,21 @@ class UserCreate(BaseModel):
     dateTime: str
 
 Base.metadata.create_all(bind=engine)
+
+def distance(lat1, lon1, lat2, lon2): #distance between two users
+    # Convert latitude and longitude from degrees to radians
+    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+
+    # Haversine formula
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    r = 6371# radius of earht
+
+    # Calculate the distance
+    distance = r * c
+    return distance
 
 def get_db():
     db = SessionLocal()
@@ -79,26 +96,38 @@ async def create_item(user: UserCreate, db: Session = Depends(get_db)):
         db.commit()
         return {**user.model_dump(), "uid": user_instance.uid}
     
-@app.get("/users/{uid}", response_model=UserCreate)
-async def get_user(uid: int, db:Session = Depends(get_db)):
-    data_ur = db.query(Users).filter(Users.uid == uid).first()
-    return data_ur
 
 @app.on_event("startup")
 async def startup():
-    n = 10  # Specify the number of random users you want
+    n = input()  # Specify the number of random users you want
     random_users = get_random_users(n)
+    k = random.randrange(n)
+    r_fname = random_users[n]["name"]["first"]
+    r_lname = random_users[n]["name"]["last"]
+    r_lat  = random_users[n]["location"]["coordinates"]["latitude"]
+    r_lon = random_users[n]["location"]["coordinates"]["longitude"]
+    
+    users_with_distances = []
+    for u in random_users:
+        dist = distance(r_lat, r_lon, u["latitude"], u["longitude"])
+        users_with_distances.append([ (u["uid"],  dist) ])
+
+    nearest_users = sorted(users_with_distances, key=lambda x: x[1])[:10]    
+
     db = SessionLocal()
-    for i, user_data in enumerate(random_users):
+    for i, dist in nearest_users:
         user_profile = UserCreate(
             uid=i,
-            email=user_data["email"],
-            first_name=user_data["name"]["first"],
-            last_name=user_data["name"]["last"],
-            gender=user_data["gender"],
-            latitude=user_data["location"]["coordinates"]["latitude"],
-            longitude=user_data["location"]["coordinates"]["longitude"],
-            run_id=user_data["login"]["uuid"],
-            dateTime=user_data["registered"]["date"]
+            email=random_users[i]["email"],
+            first_name=random_users[i]["name"]["first"],
+            last_name=random_users[i]["name"]["last"],
+            gender=random_users[i]["gender"],
+            latitude=random_users[i]["location"]["coordinates"]["latitude"],
+            longitude=random_users[i]["location"]["coordinates"]["longitude"],
+            run_id=random_users[i]["login"]["uuid"],
+            dateTime=random_users[i]["registered"]["date"]
         )
         await create_item(user_profile, db)
+
+    user_id_to_retrieve = 2  # Replace with the user ID you want to retrieve
+    user_data = db.query(Users).filter(Users.uid == user_id_to_retrieve).first()
