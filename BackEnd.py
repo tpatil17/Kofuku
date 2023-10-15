@@ -96,9 +96,9 @@ async def create_item(user: UserCreate, db: Session = Depends(get_db)):
         return {**user.model_dump(), "uid": user_instance.uid}
     
 
-@app.on_event("startup")
-async def startup():
-    n = int(input())  # Specify the number of random users you want
+@app.post("/chosen_user")
+async def startup(n: int, lim: int):
+   
     random_users = get_random_users(n)
     k = random.randrange(n)
     r_fname = random_users[k]["name"]["first"]
@@ -111,7 +111,7 @@ async def startup():
         dist = distance(r_lat, r_lon, u["location"]["coordinates"]["latitude"], u["location"]["coordinates"]["longitude"])
         users_with_distances.append( (i,  dist) )
 
-    nearest_users = sorted(users_with_distances, key=lambda x: x[1])
+    nearest_users = sorted(users_with_distances, key=lambda x: x[1])[:lim]
    
 
     db = SessionLocal()
@@ -131,4 +131,7 @@ async def startup():
 
     user_id_to_retrieve = k  # Replace with the user ID you want to retrieve
     user_data = db.query(Users).filter(Users.uid == user_id_to_retrieve).first()
+    return [user_data, nearest_users, random_users]
+
+ 
     
