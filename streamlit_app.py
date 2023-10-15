@@ -1,7 +1,8 @@
 import streamlit as st
 import requests
+import pandas
 
-st.title("Rizzler")
+st.title("Rizzler") 
 
 # Define Streamlit pages
 pages = ["Home", "Display Page"]
@@ -13,12 +14,18 @@ page_selection = st.sidebar.radio("Go to", pages, index=0)
 usr_input = ""
 in2 = ""
 user_data_ar = []
+map_data = pandas.DataFrame({
+    "User" : [],
+    "latitude": [],
+    "longitude":[]
+})
+# Home Page Display, Mainly for input purpose
 if page_selection == "Home":
     st.title("Input Page")
     usr_input = st.text_input("Number of users to Fetch:")
     in2 = st.text_input("Desired number of people you would like to see:")
 
-    if st.button("Start"):
+    if st.button("Start"): # Action button, press start to generate a list of random users and plot x close users to the randomly chose person
         if usr_input:
             if int(usr_input) == 0:
                 st.write("Number of users cannot be Zero!")
@@ -41,13 +48,24 @@ if page_selection == "Home":
         else:
             st.write("Please enter something first.")
 
+# The page will display the User that was randomly selected
 if page_selection == "Display Page":
     st.title("User")
     disp_usr = user_data_ar[0][0]
+    other_usr = user_data_ar[0][2]
     st.write("Chosen User: {} {}".format(disp_usr["first_name"], disp_usr["last_name"]))
     st.write("Nearby people:")
+    # A table of people nearby the chosen user 
     for i, d in user_data_ar[0][1]:
-        st.write("{} {}".format(user_data_ar[0][2][i]["name"]["first"] ,user_data_ar[0][2][i]["name"]["last"] )) 
-    
-    # Display user data from the response
+        new = pandas.DataFrame({"User" : ["{} {}".format(user_data_ar[0][2][i]["name"]["first"] ,user_data_ar[0][2][i]["name"]["last"] )],
+                                "latitude": [float(other_usr[i]["location"]["coordinates"]["latitude"])],
+                                "longitude": [float(other_usr[i]["location"]["coordinates"]["longitude"])]})
+        map_data = pandas.concat([map_data, new], ignore_index= True)
+        
+# Plot the map of the nearby users
+
+    st.subheader("User List")
+    st.write(map_data)
+
+    st.map(map_data)
 
