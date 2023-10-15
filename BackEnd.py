@@ -1,7 +1,6 @@
 
 
 
-
 from fastapi import FastAPI, Depends
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import Session, sessionmaker
@@ -45,7 +44,7 @@ Base.metadata.create_all(bind=engine)
 
 def distance(lat1, lon1, lat2, lon2): #distance between two users
     # Convert latitude and longitude from degrees to radians
-    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+    lat1, lon1, lat2, lon2 = map(radians, [float(lat1), float(lon1), float(lat2), float(lon2)])
 
     # Haversine formula
     dlon = lon2 - lon1
@@ -99,20 +98,21 @@ async def create_item(user: UserCreate, db: Session = Depends(get_db)):
 
 @app.on_event("startup")
 async def startup():
-    n = input()  # Specify the number of random users you want
+    n = int(input())  # Specify the number of random users you want
     random_users = get_random_users(n)
     k = random.randrange(n)
-    r_fname = random_users[n]["name"]["first"]
-    r_lname = random_users[n]["name"]["last"]
-    r_lat  = random_users[n]["location"]["coordinates"]["latitude"]
-    r_lon = random_users[n]["location"]["coordinates"]["longitude"]
+    r_fname = random_users[k]["name"]["first"]
+    r_lname = random_users[k]["name"]["last"]
+    r_lat  = random_users[k]["location"]["coordinates"]["latitude"]
+    r_lon = random_users[k]["location"]["coordinates"]["longitude"]
     
     users_with_distances = []
-    for u in random_users:
-        dist = distance(r_lat, r_lon, u["latitude"], u["longitude"])
-        users_with_distances.append([ (u["uid"],  dist) ])
+    for i, u in enumerate(random_users):
+        dist = distance(r_lat, r_lon, u["location"]["coordinates"]["latitude"], u["location"]["coordinates"]["longitude"])
+        users_with_distances.append( (i,  dist) )
 
-    nearest_users = sorted(users_with_distances, key=lambda x: x[1])[:10]    
+    nearest_users = sorted(users_with_distances, key=lambda x: x[1])
+   
 
     db = SessionLocal()
     for i, dist in nearest_users:
@@ -129,5 +129,6 @@ async def startup():
         )
         await create_item(user_profile, db)
 
-    user_id_to_retrieve = 2  # Replace with the user ID you want to retrieve
+    user_id_to_retrieve = k  # Replace with the user ID you want to retrieve
     user_data = db.query(Users).filter(Users.uid == user_id_to_retrieve).first()
+    
