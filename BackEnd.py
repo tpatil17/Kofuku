@@ -97,7 +97,7 @@ async def create_item(user: UserCreate, db: Session = Depends(get_db)):
     
 
 @app.post("/chosen_user")
-async def startup(n: int, lim: int):
+async def startup(n: int, lim: int): # uses the input numbers to generate n users and find x closest users to plot
    
     random_users = get_random_users(n)
     k = random.randrange(n)
